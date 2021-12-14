@@ -1,9 +1,12 @@
 import json
 import time
 import re
+import regex
 import argparse
 import sys
 import requests
+from nltk.tokenize import RegexpTokenizer
+#nltk.download('punkt')
 
 from wikidata_linker_utils.wikipedia import iterate_articles
 
@@ -37,17 +40,59 @@ def redirection_link_job(args):
             found_tags.append(link)
     return (article_name, found_tags)
 
+
+def cleanText(text):
+    """
+    Cleans tags from Wiki text
+    """
+    # Remove hrefs
+    re_refs = regex.compile(r"<[^>]+>", regex.IGNORECASE)
+    text = re_refs.sub("", text)
+    
+    # Remove {{...}} tags
+    re_tags = regex.compile(r"{[^}]+}", regex.IGNORECASE)
+    text = re_tags.sub("", text)
+    
+    # Remove mention tags
+    re_mentions = regex.compile(r"\[[^\]]+\|", regex.IGNORECASE)
+    text = re_mentions.sub("", text)
+    
+    # Remove other tags
+    re_other = regex.compile(r"\|[^\n]+\n", regex.IGNORECASE)
+    text = re_other.sub("", text)
+    
+    return text
+    
+
 def mention_finding_job(args):
     article_name, lines = args
-    
+
     article_link = "_".join(article_name.split())
     article_wikidata = requests.get(f"https://en.wikipedia.org/w/api.php?action=query&prop=pageprops&titles={article_link}&format=json").json()
     article_qid = 'Q'+list(article_wikidata['query']['pages'])[0]
-    
+
     mention_num = 0
     mentions = {}
     wikipedia_url_head = "en.wikipedia.org/wiki/"
+
+    # Remove InfoBox
+    re_infobox = regex.compile(r"(?=\{Infobox)(\{([^{}]|(?1))*\})", regex.IGNORECASE)
+    infobox_match_end = 0
+    for match in regex.finditer(re_infobox, lines):
+        match_string = match.group(1).strip()
+        #infobox_match_start = match.start()
+        infobox_match_end = match.end()
+    lines = lines[infobox_match_end+2:]
     
+    # Remove external links
+    re_ext_link = regex.compile(r"(==External links==)", regex.IGNORECASE)
+    ext_link_match_start = len(lines)
+    for match in regex.finditer(re_ext_link, lines):
+        match_string = match.group(1).strip()
+        ext_link_match_start = match.start()
+        #ext_link_match_end = match.end()
+    lines = lines[:ext_link_match_start]
+
     for match in re.finditer(anchor_link_pattern, lines):
         found_mention = {}
         match_string = match.group(1).strip()
@@ -60,42 +105,50 @@ def mention_finding_job(args):
         else:
             anchor = match_string
             link = match_string
-        
+
         # Anchor->Mention, Link->Entity
         entity_link = "_".join(link.split())
         wikipedia_url = wikipedia_url_head + entity_link
         wikidata_json = requests.get(f"https://en.wikipedia.org/w/api.php?action=query&prop=pageprops&titles={entity_link}&format=json").json()
         qid, wikipedia_id, entity_desc = "", "", ""
-        
+
         try:
             qid = list(wikidata_json['query']['pages'])[0]
             wikipedia_id = wikidata_json['query']['pages'][qid]['pageprops']['wikibase_item']
             entity_desc = wikidata_json['query']['pages'][qid]['pageprops']['wikibase-shortdesc']
         except KeyError:
             continue
+
+        # Get Tokenized Context
+        prev_text = cleanText(lines[:match_start])
+        next_text = cleanText(lines[match_end:])
         
-        # Get Context
-        tot_context = 512
-        if len(lines) - len(match_string) > 512:
-            if match_start-256 >= 0:
-                left_context = lines[match_start-256:match_start]
-            else:
-                left_context = lines[:match_start]
-            if match_end+256 > len(lines):
-                right_context = lines[match_end:]
-            else:
-                right_context = lines[match_end:match_end+256]
+        tokenizer = RegexpTokenizer(r'\w+')
+        prev_toks = tokenizer.tokenize(prev_text)
+        next_toks = tokenizer.tokenize(next_text)
+        
+        prev_len = len(prev_toks)
+        next_len = len(next_toks)
+        if prev_len>=128 and next_len>=128:
+            left_context = prev_toks[-128:]
+            right_context = next_toks[:128]
+        elif len(prev_toks)<128 and next_len>=128:
+            left_context = prev_toks
+            right_context = next_toks[:256-prev_len]
+        elif len(prev_toks)>=128 and next_len<128:
+            left_context = prev_toks[-(256-next_len):]
+            right_context = next_toks
         else:
-            left_context = lines[:match_start]
-            right_context = lines[match_end:]
-        
+            left_context = prev_toks
+            right_context = next_toks
+
         # Make final mentions
         if len(anchor) > 0 and len(link) > 0:
             mention_num += 1
             found_mention["article_id"] = article_qid
             found_mention["mention"] = anchor
-            found_mention["left_context"] = left_context
-            found_mention["right_context"] = right_context
+            found_mention["left_context"] = " ".join(left_context)
+            found_mention["right_context"] = " ".join(right_context)
             found_mention["wikipedia_title"] = link
             found_mention["wikipedia_id"] = wikipedia_id
             found_mention["wikipedia_url"] = wikipedia_url
@@ -112,7 +165,7 @@ def anchor_finding_job(args):
     found_tags = []
     for match in re.finditer(anchor_link_pattern, lines):
         match_string = match.group(1).strip()
-        
+
         if "|" in match_string:
             link, anchor = match_string.rsplit("|", 1)
             link = link.strip().split("#")[0]
@@ -123,7 +176,7 @@ def anchor_finding_job(args):
 
         if len(anchor) > 0 and len(link) > 0:
             found_tags.append((anchor, link))
-            
+
     return (article_name, found_tags)
 
 
@@ -132,7 +185,6 @@ def anchor_category_redirection_link_job(args):
     article_name, found_redirections = redirection_link_job(args)
     article_name, found_anchors = anchor_finding_job(args)
     article_name, found_mentions = mention_finding_job(args)
-    #= mention_finding_job(args)
     return (article_name, (found_anchors, found_redirections, found_mentions))
 
 
@@ -215,4 +267,3 @@ def main(argv=None):
 
 if __name__ == "__main__":
     main()
-
