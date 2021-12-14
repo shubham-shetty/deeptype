@@ -9,6 +9,6 @@ requests>=2.6.0
 tensorflow>=1.4.0
 wikipedia-ner>=0.0.23
 ciseau>=1.0.1
-Cython>=0.23.2
+Cython==0.26
 marisa-trie>=0.7.2
 nltk>=3.6.5
