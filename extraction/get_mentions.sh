@@ -75,7 +75,7 @@ do
     then
         echo "Already downloaded and extracted ${LANGUAGE}wiki-latest-pages-articles.xml."
     else
-        wget -O ${DATA_DIR}${LANGUAGE}wiki-latest-pages-articles.xml.bz2 https://dumps.wikimedia.org/${LANGUAGE}wiki/latest/${LANGUAGE}wiki-latest-pages-articles.xml.bz2
+        wget -O ${DATA_DIR}${LANGUAGE}wiki-latest-pages-articles.xml.bz2 https://dumps.wikimedia.org/${LANGUAGE}wiki/latest/${LANGUAGE}wiki-latest-pages-articles.xml.bz2 --no-check-certificate
         bzip2 -d -v4 ${DATA_DIR}${LANGUAGE}wiki-latest-pages-articles.xml.bz2
     fi
 	python3 extraction/get_anchors.py ${DATA_DIR}${LANGUAGE}wiki-latest-pages-articles.xml ${DATA_DIR}${LANGUAGE}_anchors.tsv ${DATA_DIR}${LANGUAGE}_redirections.tsv ${DATA_DIR}${LANGUAGE}_mentions.json
