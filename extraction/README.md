@@ -34,6 +34,12 @@ ArticleName_MentionNum: {
 }
 ```
 
+TO-DO:
+1. Store mentions in a more space efficient manner
+2. Introduce a temporal partitioning aspect for storing mentions
+3. Find a way to find differences (delta) between 2 mention dumps 
+4. Re-train a NER model using a continual learning framework using the delta data
+
 
 
 Guide to Human Type Classification
