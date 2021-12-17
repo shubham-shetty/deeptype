@@ -1,3 +1,41 @@
+Generating Mentions from Wikipedia Data
+---------------------------------------
+
+Following steps should be followed to extract mentions from latest Wikipedia data dump - 
+
+1. Installation
+   ```.bash
+   pip install -r requirements.txt
+   pip install wikidata_linker_utils_src/
+   ```
+2. Generate Mentions
+   ```.bash
+   export DATA_DIR=data/
+   ./extraction/get_mentions.sh ${DATA_DIR} en
+   ```
+
+The script `get_mentions.sh` contains the commands to download latest wikidata dump and process it. Following steps are executed in this script - 
+1. Downloading and preparing Wikidata.
+2. Extracting entities and creating the latest Knowledge Base (KB) from Wikidata.
+3. Download latest Wikipedia XML dump.
+4. Generate entity-mention pairs from the unzipped XML dump.
+
+Entity-mention pairs are generated from the Wikipedia dump and KB through the script `get_anchors.py`. The entity-mention pairs are stored in JSON format, following a file structure similar to the one used in [BLINK](https://arxiv.org/pdf/1911.03814.pdf). Each mention contains following data - 
+```json
+ArticleName_MentionNum: {
+        "article_id"        : Q-id of the article
+        "mention"           : Actual mention span
+        "left_context"      : Context to left of mention span
+        "right_context"     : Context to right of mention span
+        "wikipedia_title"   : Wikipedia article title of entity referenced
+        "wikipedia_id"      : Q-id of the entity article
+        "wikipedia_url"     : URL of entity Wikipedia page
+        "entity_desc"       : Short description of entity
+}
+```
+
+
+
 Guide to Human Type Classification
 ----------------------------------
 
