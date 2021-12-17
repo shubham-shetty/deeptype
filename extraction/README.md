@@ -48,9 +48,9 @@ Guide to Human Type Classification
 For each type dimension you want, a method for projecting the wikidata type system into
 distinct classes is needed.
 
-# Usage
+## Usage
 
-## Defining a Graph projection
+### Defining a Graph projection
 
 First create a Python script that has a single method `classify` which returns a dictionary
 of numpy boolean arrays:
@@ -97,7 +97,7 @@ def classify(c):
     return {"human": is_human}
 ```
 
-### Tooling & debugging
+#### Tooling & debugging
 
 Within the `classify` function, you can make different calls to print out,
 or otherwise report on the behavior of your system. However it is sometimes
@@ -105,7 +105,7 @@ hard to know in a rich way the neighborhood or statistics of a particular
 projection. Several methods help report on the boolean arrays in a human
 readable way:
 
-#### Class Report
+##### Class Report
 
 The method `TypeCollection.class_report` provides info about the number of
 unique children, items related by some edge type (see example below).
@@ -123,7 +123,7 @@ However, if the boolean array deals with a different
 language than the language_path, or is somehow more niche, then this printing
 may not print many items despite its popularity in a different country/subculture.
 
-#### Describe Connection
+##### Describe Connection
 
 Sometimes two nodes are connected even though this connection is unexpected
 (e.g. Toaster (Q14890) and Science (Q336)). To understand what edges can be used
@@ -134,9 +134,9 @@ method prints the path:
 c.describe_connection("Q14890", "Q336", [wprop.INSTANCE_OF, wprop.SUBCLASS_OF)
 ```
 
-####
+#####
 
-### Exporting
+#### Exporting
 
 Call `extraction/project_graph` as you did previously and add the following argument `export_classification`:
 
@@ -145,7 +145,7 @@ WIKIDATA_PATH=/Volumes/Samsung_T3/tahiti/2017-02/wikidata
 python3 extraction/project_graph.py $WIKIDATA_PATH my_classifier.py  --export_classification /path/to/my_classification
 ```
 
-### Blacklist
+#### Blacklist
 
 Several nodes can cause issues when doing graph projections because they are too generic or otherwise unhelpful.
 A remedy is to state that certain edges cannot be crossed.
@@ -155,7 +155,7 @@ We can do this using the `extraction/blacklist.json` file. This file is a JSON d
 
 Note: `bad_node_pair` is not relation specific, and thus it will cancel out any connection between node pairs.
 
-### Interactivity
+#### Interactivity
 
 The `extraction/project_graph` script acts like a REPL. Each time an error is found in the script, or after the script
 is run, the script gets reloaded. You can therefore iterate on the script, hit ENTER, and try it again. Each
@@ -163,12 +163,12 @@ time it will export the classification if it ran without errors.
 
 The blacklist is reloaded on each REPL run in interactive mode.
 
-### Options
+#### Options
 
 - Use `--language_path` to specify the location of a wikipedia trie.
 - Use `--num_names_to_load` to control whether names are pre-loaded (longer start time), but faster to do reporting (e.g. to show membership examples).
 
-## Testing against a corpus
+### Testing against a corpus
 
 To test the effectiveness of the classification you can use a sample from Wikipedia to benchmark classification using the `extraction/evaluate_type_system.py`. First create a config file that describes your classifiers & paths:
 
@@ -194,16 +194,16 @@ BASE_PATH=/Volumes/Samsung_T3/tahiti/2017-02/
 python3 extraction/evaluate_type_system.py my_config.json --relative_to $BASE_PATH
 ```
 
-#### Config notes
+##### Config notes
 
 - `BASE_PATH` points to the parent directory for "wiki", "wikidata", and "language_path" (or if these paths are made absolute, then `--relative_to` is not needed).
 - in the config "prefix" specifies what language/lookup method should be used when parsing the "wiki" file. If you switch to French, "frwiki-latest-pages-articles.xml", then use `"prefix": "frwiki"` instead.
 - redirections is another file collected for each wikipedia corpus. Use the redirections corresponding to the wikipedia dump you are using (so `fr_redirections.tsv` for French).
 
-### Interactivity
+#### Interactivity
 
 After running this function you can now update your exports and run it again by hitting ENTER.
 
-### Options
+#### Options
 
 - Use `--noverbose` to not see specific ambiguity examples, only stats.
